@@ -1,0 +1,46 @@
+version: "2.0"
+
+services:
+  zookeeper-server:
+    image: "confluentinc/cp-zookeeper:latest"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+
+  kafka-server:
+    image: "confluentinc/cp-kafka:latest"
+    depends_on:
+      - zookeeper-server
+    ports:
+      - 29092:29092
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-server:2181
+      KAFKA_ADVERTISED_LISTENERS: internal://kafka-server:9092,local://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: internal:PLAINTEXT,local:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: internal
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 3
+
+  stocks-producer:
+    build: StocksProducer/
+    depends_on:
+      - kafka-server
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-server:9092
+      KAFKA_CLIENT_ID: stocks-producer
+      PRODUCER_KAFKA_TOPIC_NAME: stocks
+      PRODUCER_MESSAGES_PER_SEC: 10
+      PRODUCER_PRICE_VARIANCE: 10
+
+  stocks-consumer:
+    build: StocksConsumer/
+    depends_on:
+      - stocks-producer
+    mem_reservation: 512m
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-server:9092
+      CONSUMER_KAFKA_TOPIC_NAME: stocks
+      CONSUMER_TRIGGER_INTERVAL_SECS: 30
+      CONSUMER_STARTING_OFFSETS: earliest
