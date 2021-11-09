@@ -1,7 +1,7 @@
 package com.gnm.interview.sriram
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, current_timestamp, explode, from_json, lit}
+import org.apache.spark.sql.functions.{col, current_timestamp, explode, from_json, lit, window}
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types.{DataTypes, IntegerType, StringType, StructType}
 
@@ -29,7 +29,10 @@ object Main {
       .master("local")
       .getOrCreate()
 
+    spark.sparkContext.setLogLevel("WARN")
+
     val schema = new StructType()
+      .add("eventTime", DataTypes.TimestampType)
       .add("tickers", DataTypes.createArrayType(
         new StructType()
           .add("name", StringType)
@@ -43,15 +46,17 @@ object Main {
       .load()
 
     df.select(from_json(col("value").cast(StringType), schema).as("data"))
-      .select(explode(col("data.tickers")).as("ticker"))
-      .select(col("ticker.name").as("ticker"), col("ticker.price").as("price"))
-      .groupBy("ticker")
+      .select(col("data.eventTime"), explode(col("data.tickers")).as("ticker"))
+      .select(col("eventTime"), col("ticker.name").as("ticker"), col("ticker.price").as("price"))
+      .withWatermark("eventTime", "1 minutes")
+      .groupBy(window(col("eventTime"), "30 seconds"), col("ticker"))
       .avg("price")
-      .withColumn("timestamp", current_timestamp())
+      .select(col("window.start").as("start_time"), col("window.end").as("end_time"), col("ticker"), col("avg(price)").as("avg_price"))
+      .withColumn("process_time", current_timestamp())
       .writeStream
       .format("console")
       .option("truncate", value = false)
-      .outputMode("complete")
+      .outputMode("append")
       .trigger(ProcessingTime(s"$triggerInterval seconds"))
       .start()
       .awaitTermination()

@@ -43,7 +43,8 @@ class StockTickerProducer(topicName: String, messagesPerSec: Int, priceVariance:
       Ticker(ticker.name, tickerPrice)
     })
 
-    Message(newTickersWithPrice)
+    val eventTime = System.currentTimeMillis() / 1000
+    Message(eventTime, newTickersWithPrice)
   }
 
   def start(): Unit = {

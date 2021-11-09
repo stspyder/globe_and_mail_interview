@@ -20,4 +20,4 @@ Before bring up this image, please make sure that your docker deamon is allowed 
 At any point, if you wish to rebuild the image after changing the source, delete the existing image using `docker rmi <image id>` and then use `docker-compose up --build` to build the image and bring the containers up.
 
 ## Console Output
-The assigment says to print the result of consumer to console (which I have did). But using `docker logs <container id>` will give you both stdout and stderr (where spark logs go) in the same stream. To look at the results of the consumer aggregation, please use `docker ps` to get the consumer container name / id. Then use `docker logs <consumer container id> -f 2>/dev/null` to get only the stdout where the aggregation results are printed.
+The assigment says to print the result of consumer to console (which I have did). To look at the results of the consumer aggregation, please use `docker ps` to get the consumer container name / id. Then use `docker logs <consumer container id> -f 2>/dev/null` to get only the stdout where the aggregation results are printed.
